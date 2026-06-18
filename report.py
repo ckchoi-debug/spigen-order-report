@@ -19,8 +19,8 @@ SF_ROLE      = "TUTOR_USER"
 SF_WAREHOUSE = "LECTURE_WH"
 SF_DATABASE  = "S3"
 
-SF_PRIVATE_KEY   = os.environ["SF_PRIVATE_KEY"].encode('utf-8').lstrip(b'\xef\xbb\xbf').decode('utf-8').strip()
-GCHAT_WEBHOOK    = os.environ["GCHAT_WEBHOOK_URL"].encode('utf-8').lstrip(b'\xef\xbb\xbf').decode('utf-8').strip()
+SF_PRIVATE_KEY   = os.environ["SF_PRIVATE_KEY"].strip()
+GCHAT_WEBHOOK    = os.environ["GCHAT_WEBHOOK_URL"].strip()
 
 TOP_N = 20
 
@@ -31,7 +31,7 @@ def query(sql, schema=None):
     conn = snowflake.connector.connect(
         account=SF_ACCOUNT,
         user=SF_USER,
-        private_key=base64.b64decode(''.join(c for c in SF_PRIVATE_KEY if c.isascii()).strip()),
+        private_key=base64.b64decode(SF_PRIVATE_KEY),
         role=SF_ROLE,
         warehouse=SF_WAREHOUSE,
         database=SF_DATABASE,
