@@ -19,8 +19,8 @@ SF_ROLE      = "TUTOR_USER"
 SF_WAREHOUSE = "LECTURE_WH"
 SF_DATABASE  = "S3"
 
-SF_PRIVATE_KEY   = os.environ["SF_PRIVATE_KEY"]       # GitHub Secret
-GCHAT_WEBHOOK    = os.environ["GCHAT_WEBHOOK_URL"]    # GitHub Secret
+SF_PRIVATE_KEY   = os.environ["SF_PRIVATE_KEY"].encode('utf-8').lstrip(b'\xef\xbb\xbf').decode('utf-8').strip()
+GCHAT_WEBHOOK    = os.environ["GCHAT_WEBHOOK_URL"].encode('utf-8').lstrip(b'\xef\xbb\xbf').decode('utf-8').strip()
 
 TOP_N = 20
 
