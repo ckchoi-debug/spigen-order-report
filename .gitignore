@@ -1,0 +1,9 @@
+*.p8
+*.pem
+*.key
+.env
+__pycache__/
+__MACOSX/
+*.pyc
+tutor_snowflake_usage.py
+gchat_order_report.py
