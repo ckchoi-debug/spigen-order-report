@@ -1,0 +1,255 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>차량용 제품군 판매 현황 2025-2026</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; background: #f5f5f5; color: #1a1a1a; padding: 24px; }
+  h1 { font-size: 18px; font-weight: 600; margin-bottom: 4px; }
+  .sub { font-size: 13px; color: #666; margin-bottom: 20px; }
+  .card { background: #fff; border: 1px solid #e5e5e5; border-radius: 12px; padding: 20px; margin-bottom: 16px; }
+  .ctrl-row { display: flex; flex-wrap: wrap; gap: 12px; align-items: center; margin-bottom: 16px; }
+  .ctrl-group { display: flex; align-items: center; gap: 6px; font-size: 13px; color: #555; }
+  .ctrl-group label { white-space: nowrap; font-weight: 500; }
+  select { font-size: 13px; padding: 5px 8px; border: 1px solid #d0d0d0; border-radius: 6px; background: #fff; cursor: pointer; }
+  .mode-bar { display: flex; gap: 4px; margin-left: auto; }
+  .mode-btn { padding: 5px 14px; font-size: 12px; border: 1px solid #d0d0d0; border-radius: 6px; cursor: pointer; background: #fff; color: #555; }
+  .mode-btn.on { background: #1a1a1a; color: #fff; border-color: #1a1a1a; font-weight: 500; }
+  .cat-pills { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 16px; }
+  .pill { padding: 4px 12px; font-size: 12px; border: 1px solid #ccc; border-radius: 20px; cursor: pointer; color: #555; background: #fff; font-weight: 500; transition: all .15s; }
+  .pill.on { color: #fff; border-color: transparent; }
+  .metrics { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; margin-bottom: 20px; }
+  .metric { background: #f8f8f8; border-radius: 8px; padding: 14px 16px; }
+  .metric-label { font-size: 12px; color: #888; margin-bottom: 4px; }
+  .metric-value { font-size: 22px; font-weight: 600; color: #1a1a1a; }
+  .chart-wrap { position: relative; width: 100%; height: 280px; margin-bottom: 20px; }
+  .legend { display: flex; flex-wrap: wrap; gap: 12px; margin-bottom: 16px; }
+  .legend-item { display: flex; align-items: center; gap: 5px; font-size: 12px; color: #555; }
+  .legend-dot { width: 10px; height: 10px; border-radius: 2px; flex-shrink: 0; }
+  .divider { height: 1px; background: #e5e5e5; margin: 16px 0; }
+  .tbl-wrap { overflow-x: auto; }
+  table { width: 100%; border-collapse: collapse; font-size: 12px; white-space: nowrap; }
+  th { padding: 7px 10px; text-align: right; font-weight: 600; color: #555; border-bottom: 1px solid #e5e5e5; background: #fafafa; }
+  th:first-child { text-align: left; width: 80px; }
+  td { padding: 6px 10px; text-align: right; border-bottom: 1px solid #f0f0f0; color: #1a1a1a; }
+  td:first-child { text-align: left; font-weight: 500; color: #333; }
+  tr:hover td { background: #fafafa; }
+  .total-row td { font-weight: 600; background: #f0f0f0 !important; border-top: 1px solid #d0d0d0; }
+  .sep { border-left: 1px solid #d0d0d0; }
+  @media (max-width: 600px) {
+    .metrics { grid-template-columns: 1fr 1fr; }
+    body { padding: 12px; }
+  }
+</style>
+</head>
+<body>
+
+<h1>차량용 제품군 판매 현황</h1>
+<p class="sub">2025년 1월 ~ 2026년 6월 · Spigen SAP 청구 데이터 (USD)</p>
+
+<div class="card">
+  <div class="ctrl-row">
+    <div class="ctrl-group">
+      <label>시작 월</label>
+      <select id="sel-from"></select>
+    </div>
+    <div class="ctrl-group">
+      <label>종료 월</label>
+      <select id="sel-to"></select>
+    </div>
+    <div class="mode-bar">
+      <button class="mode-btn on" onclick="setMode('amt',this)">금액 (USD)</button>
+      <button class="mode-btn" onclick="setMode('qty',this)">수량</button>
+    </div>
+  </div>
+
+  <div class="cat-pills" id="pills"></div>
+
+  <div class="metrics">
+    <div class="metric"><div class="metric-label">총 판매수량</div><div class="metric-value" id="m-qty">—</div></div>
+    <div class="metric"><div class="metric-label">총 판매금액</div><div class="metric-value" id="m-usd">—</div></div>
+    <div class="metric"><div class="metric-label">월평균 금액</div><div class="metric-value" id="m-avg">—</div></div>
+  </div>
+
+  <div class="legend" id="legend"></div>
+
+  <div class="chart-wrap">
+    <canvas id="mainChart" role="img" aria-label="월별 차량용 제품 판매 추이 누적 막대 차트">월별 판매 데이터</canvas>
+  </div>
+</div>
+
+<div class="card">
+  <div class="tbl-wrap">
+    <table id="dtbl"><thead></thead><tbody></tbody></table>
+  </div>
+</div>
+
+<script>
+const RAW = [
+  ["2025-01","CarSnsr",8186,82525.11],["2025-01","CarMat",19151,110846.72],["2025-01","CarHolder",7845,53897.32],["2025-01","CarChgr",4230,28512.60],["2025-01","CarPlate",11565,99785.25],["2025-01","CarDrCup",600,5796.00],
+  ["2025-02","CarSnsr",9085,104661.56],["2025-02","CarMat",12782,115048.87],["2025-02","CarHolder",26437,144940.98],["2025-02","CarChgr",25233,115850.02],["2025-02","CarPlate",4034,51602.23],["2025-02","CarDrCup",1201,11628.39],["2025-02","CarESHammer",80,14.00],
+  ["2025-03","CarSnsr",15353,162532.61],["2025-03","CarMat",26935,176294.38],["2025-03","CarHolder",7783,59371.56],["2025-03","CarChgr",9707,15559.37],["2025-03","CarPlate",3087,17682.19],["2025-03","CarDrCup",363,5117.33],
+  ["2025-04","CarSnsr",91617,666495.19],["2025-04","CarMat",9280,67218.39],["2025-04","CarHolder",8889,49090.48],["2025-04","CarChgr",4812,7110.53],["2025-04","CarPlate",3431,26109.22],["2025-04","CarDrCup",6,297.68],
+  ["2025-05","CarSnsr",76824,846161.53],["2025-05","CarMat",5005,52884.65],["2025-05","CarHolder",14192,80804.39],["2025-05","CarChgr",18827,68661.04],["2025-05","CarPlate",2910,22934.88],["2025-05","CarDrCup",6,196.21],
+  ["2025-06","CarSnsr",7350,85143.88],["2025-06","CarMat",17546,126530.31],["2025-06","CarHolder",9054,48284.22],["2025-06","CarChgr",1114,9947.97],["2025-06","CarPlate",2700,13595.55],["2025-06","CarDrCup",7,207.07],
+  ["2025-07","CarSnsr",42913,405380.88],["2025-07","CarMat",15680,123065.95],["2025-07","CarHolder",5313,57189.52],["2025-07","CarChgr",2087,10485.12],["2025-07","CarPlate",4191,21587.30],["2025-07","CarDrCup",5,206.26],["2025-07","CarDrStep",30,88.80],["2025-07","CarESHammer",789,214.50],
+  ["2025-08","CarSnsr",45822,358795.91],["2025-08","CarMat",23352,147210.73],["2025-08","CarHolder",5874,62776.24],["2025-08","CarChgr",46745,48954.72],["2025-08","CarPlate",1909,12654.74],["2025-08","CarDrCup",6,203.17],["2025-08","CarDrStep",901,2693.99],
+  ["2025-09","CarSnsr",81014,639541.75],["2025-09","CarMat",18371,134627.43],["2025-09","CarHolder",23149,108492.39],["2025-09","CarChgr",27088,95968.90],["2025-09","CarPlate",3759,19074.51],["2025-09","CarDrCup",62,152.12],["2025-09","CarDrStep",121,948.96],["2025-09","CarESHammer",60,942.00],
+  ["2025-10","CarSnsr",21952,52211.42],["2025-10","CarMat",23117,131982.26],["2025-10","CarHolder",9069,41295.37],["2025-10","CarChgr",11867,58472.80],["2025-10","CarPlate",6998,29547.95],["2025-10","CarDrCup",10,429.92],["2025-10","CarDrStep",6,170.20],
+  ["2025-11","CarSnsr",24608,337787.53],["2025-11","CarMat",21253,154015.52],["2025-11","CarHolder",15133,112840.74],["2025-11","CarChgr",10433,37139.10],["2025-11","CarPlate",3427,20684.05],["2025-11","CarDrCup",2026,16388.83],["2025-11","CarDrStep",103,263.97],["2025-11","CarESHammer",300,710.00],
+  ["2025-12","CarSnsr",32076,249654.04],["2025-12","CarMat",29720,221983.86],["2025-12","CarHolder",16895,106298.12],["2025-12","CarChgr",1156,8079.23],["2025-12","CarPlate",4794,22698.43],["2025-12","CarDrCup",13,428.85],["2025-12","CarDrStep",4924,16850.90],
+  ["2026-01","CarSnsr",37193,382684.05],["2026-01","CarMat",8506,72523.23],["2026-01","CarHolder",24732,78513.87],["2026-01","CarChgr",1838,2218.93],["2026-01","CarPlate",3377,18403.90],["2026-01","CarDrCup",4,197.89],["2026-01","CarDrStep",125,2144.55],
+  ["2026-02","CarSnsr",2077,34003.07],["2026-02","CarMat",10544,70934.99],["2026-02","CarHolder",6773,53032.87],["2026-02","CarChgr",5763,32453.42],["2026-02","CarPlate",4502,24074.23],["2026-02","CarDrCup",1,58.32],["2026-02","CarDrStep",798,6905.95],
+  ["2026-03","CarSnsr",4948,60199.70],["2026-03","CarMat",18415,126523.09],["2026-03","CarHolder",10268,101987.97],["2026-03","CarChgr",3727,23154.93],["2026-03","CarPlate",7056,35078.33],["2026-03","CarDrCup",35,425.50],["2026-03","CarDrStep",2202,13441.04],
+  ["2026-04","CarSnsr",26837,218671.18],["2026-04","CarMat",32978,231744.30],["2026-04","CarHolder",19353,93026.73],["2026-04","CarChgr",7744,7575.30],["2026-04","CarPlate",4151,32146.64],["2026-04","CarDrCup",507,3446.97],["2026-04","CarDrStep",8039,19495.28],["2026-04","CarESHammer",440,440.00],
+  ["2026-05","CarSnsr",51557,634910.23],["2026-05","CarMat",38372,241950.26],["2026-05","CarHolder",4828,39502.98],["2026-05","CarChgr",2941,8096.68],["2026-05","CarPlate",8679,33643.81],["2026-05","CarDrCup",1105,8723.90],["2026-05","CarDrStep",4350,11781.26],
+  ["2026-06","CarSnsr",3,209.57],["2026-06","CarMat",28,1312.08],["2026-06","CarHolder",2,69.98],["2026-06","CarPlate",4,120.84]
+];
+
+const CATS = ["CarSnsr","CarMat","CarHolder","CarChgr","CarPlate","CarDrStep","CarDrCup","CarESHammer"];
+const COLORS = {CarSnsr:"#185FA5",CarMat:"#1D9E75",CarHolder:"#534AB7",CarChgr:"#BA7517",CarPlate:"#D85A30",CarDrStep:"#D4537E",CarDrCup:"#888780",CarESHammer:"#639922"};
+const CAT_LABEL = {CarSnsr:"차량글라스(CarSnsr)",CarMat:"차량매트(CarMat)",CarHolder:"거치대(CarHolder)",CarChgr:"차량충전기(CarChgr)",CarPlate:"플레이트(CarPlate)",CarDrStep:"도어스텝(CarDrStep)",CarDrCup:"컵홀더(CarDrCup)",CarESHammer:"비상망치(CarESHammer)"};
+const MONTHS = [...new Set(RAW.map(r=>r[0]))].sort();
+
+let fromM = MONTHS[0], toM = MONTHS[MONTHS.length-2];
+let activeCats = new Set(CATS);
+let mode = 'amt';
+let chart = null;
+
+const selFrom = document.getElementById('sel-from');
+const selTo = document.getElementById('sel-to');
+MONTHS.forEach(m => {
+  selFrom.innerHTML += `<option value="${m}">${m}</option>`;
+  selTo.innerHTML += `<option value="${m}">${m}</option>`;
+});
+selTo.value = MONTHS[MONTHS.length-2];
+
+selFrom.onchange = () => { fromM = selFrom.value; render(); };
+selTo.onchange = () => { toM = selTo.value; render(); };
+
+const pillsEl = document.getElementById('pills');
+CATS.forEach(c => {
+  const el = document.createElement('button');
+  el.className = 'pill on';
+  el.textContent = c;
+  el.style.background = COLORS[c];
+  el.dataset.cat = c;
+  el.onclick = () => {
+    if (activeCats.has(c)) { activeCats.delete(c); el.classList.remove('on'); el.style.background = ''; el.style.color = '#555'; }
+    else { activeCats.add(c); el.classList.add('on'); el.style.background = COLORS[c]; el.style.color = '#fff'; }
+    render();
+  };
+  pillsEl.appendChild(el);
+});
+
+const legendEl = document.getElementById('legend');
+CATS.forEach(c => {
+  legendEl.innerHTML += `<span class="legend-item"><span class="legend-dot" style="background:${COLORS[c]}"></span>${CAT_LABEL[c]}</span>`;
+});
+
+function setMode(m, btn) {
+  mode = m;
+  document.querySelectorAll('.mode-btn').forEach(b => b.classList.remove('on'));
+  btn.classList.add('on');
+  render();
+}
+
+function fmtAmt(v) {
+  if (v >= 1000000) return '$' + (v/1000000).toFixed(2) + 'M';
+  if (v >= 1000) return '$' + Math.round(v/1000).toLocaleString() + 'K';
+  return '$' + Math.round(v).toLocaleString();
+}
+
+function render() {
+  const visMonths = MONTHS.filter(m => m >= fromM && m <= toM);
+  const data = RAW.filter(r => r[0] >= fromM && r[0] <= toM && activeCats.has(r[1]));
+
+  const totalQty = data.reduce((s,r)=>s+r[2],0);
+  const totalAmt = data.reduce((s,r)=>s+r[3],0);
+  const avgAmt = visMonths.length > 0 ? totalAmt / visMonths.length : 0;
+
+  document.getElementById('m-qty').textContent = totalQty.toLocaleString();
+  document.getElementById('m-usd').textContent = fmtAmt(totalAmt);
+  document.getElementById('m-avg').textContent = fmtAmt(avgAmt) + ' / 월';
+
+  const byMC = {};
+  data.forEach(([m,c,q,a]) => { if(!byMC[m]) byMC[m]={}; byMC[m][c]={qty:q,amt:a}; });
+
+  const activeCatArr = CATS.filter(c => activeCats.has(c));
+  const datasets = activeCatArr.map(c => ({
+    label: c,
+    data: visMonths.map(m => { const d = byMC[m]&&byMC[m][c]; return d?(mode==='amt'?Math.round(d.amt):d.qty):0; }),
+    backgroundColor: COLORS[c],
+    borderWidth: 0,
+    stack: 'main'
+  }));
+
+  const ctx = document.getElementById('mainChart').getContext('2d');
+  if (chart) chart.destroy();
+  chart = new Chart(ctx, {
+    type: 'bar',
+    data: { labels: visMonths, datasets },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      plugins: {
+        legend: { display: false },
+        tooltip: {
+          callbacks: {
+            label: ctx => {
+              const v = ctx.parsed.y;
+              return ` ${ctx.dataset.label}: ${mode==='amt'?'$'+v.toLocaleString():v.toLocaleString()}`;
+            },
+            footer: items => {
+              const sum = items.reduce((s,i)=>s+i.parsed.y,0);
+              return `합계: ${mode==='amt'?'$'+Math.round(sum).toLocaleString():Math.round(sum).toLocaleString()}`;
+            }
+          }
+        }
+      },
+      scales: {
+        x: { stacked: true, ticks: { font:{size:11}, autoSkip: visMonths.length>14, maxRotation:45 } },
+        y: { stacked: true, ticks: { font:{size:11}, callback: v => mode==='amt'?(v>=1000000?'$'+(v/1000000).toFixed(1)+'M':'$'+(v/1000).toFixed(0)+'K'):(v>=1000?(v/1000).toFixed(0)+'K':v) } }
+      }
+    }
+  });
+
+  const thead = document.querySelector('#dtbl thead');
+  const tbody = document.querySelector('#dtbl tbody');
+
+  let hdr = '<tr><th>월</th>';
+  activeCatArr.forEach(c => { hdr += `<th>${c}</th>`; });
+  hdr += '<th class="sep">합계</th></tr>';
+  thead.innerHTML = hdr;
+
+  const totals = {};
+  activeCatArr.forEach(c => totals[c] = 0);
+  let grandTotal = 0;
+  let rows = '';
+
+  visMonths.forEach(m => {
+    let rowTotal = 0;
+    let cells = '';
+    activeCatArr.forEach(c => {
+      const d = byMC[m]&&byMC[m][c];
+      const v = d?(mode==='amt'?d.amt:d.qty):0;
+      totals[c] += v;
+      rowTotal += v;
+      cells += `<td>${v>0?(mode==='amt'?'$'+Math.round(v).toLocaleString():Math.round(v).toLocaleString()):'-'}</td>`;
+    });
+    grandTotal += rowTotal;
+    rows += `<tr><td>${m}</td>${cells}<td class="sep">${mode==='amt'?'$'+Math.round(rowTotal).toLocaleString():Math.round(rowTotal).toLocaleString()}</td></tr>`;
+  });
+
+  let sumRow = '<tr class="total-row"><td>합계</td>';
+  activeCatArr.forEach(c => { sumRow += `<td>${mode==='amt'?'$'+Math.round(totals[c]).toLocaleString():Math.round(totals[c]).toLocaleString()}</td>`; });
+  sumRow += `<td class="sep">${mode==='amt'?'$'+Math.round(grandTotal).toLocaleString():Math.round(grandTotal).toLocaleString()}</td></tr>`;
+  tbody.innerHTML = rows + sumRow;
+}
+
+render();
+</script>
+</body>
+</html>
